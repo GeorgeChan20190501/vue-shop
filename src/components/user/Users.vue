@@ -66,8 +66,8 @@
                       <el-tooltip   effect="dark"  content="删除" placement="top-start">
                      <el-button type="danger" size="mini" @click="open(scope.row.id)" icon="el-icon-delete" circle></el-button>
                      </el-tooltip>
-                      <el-tooltip   effect="dark" content="授权" placement="top-start">
-                     <el-button type="warning" size="mini" icon="el-icon-setting" circle></el-button>
+                      <el-tooltip   effect="dark"  content="授权" placement="top-start">
+                     <el-button type="warning" size="mini" @click="grantUser(scope.row)"  icon="el-icon-setting" circle></el-button>
                      </el-tooltip>
                 </template>
             </el-table-column>
@@ -146,6 +146,25 @@
                 </span>
  </el-dialog>
 
+
+<el-dialog
+    title="用户授权"
+    :visible.sync="userDialogVisible"
+    width="50%"
+    @close="closeD"
+    >
+    <div>
+        <p>用户ID: {{this.userInfo.id}}</p>
+        <p>用户姓名: {{this.userInfo.username}}</p>
+        <el-select  v-model="userRoleId" placeholder="用户角色">
+            <el-option v-for="item in roleList" :key="item.id" :label="item.roleName" :value="item.id"></el-option>  
+        </el-select>
+    </div>    
+    <span slot="footer" class="dialog-footer">
+        <el-button @click="userDialogVisible = false">取 消</el-button>
+        <el-button type="primary" @click="saveRight">确 定</el-button>
+    </span>
+</el-dialog>
     </div>
 </template>
 
@@ -175,7 +194,7 @@ export default {
                pagenum:1,
                pagesize:2
            },
-           
+           userDialogVisible:false,
            userList:[],
            totalPage:0,
            dialogVisible:false,
@@ -210,13 +229,48 @@ export default {
                    { required: true, message: '请输入手机', trigger: 'blur' },
                    { validator:checkMobile,trigger:'blur'}
                ]
-           }
+           },
+           userInfo:{},
+           roleList:[],
+           userRoleId:''
        }
    },
    created(){
-       this.getUserList();
+        this.getUserList();
+        this.getRoleList();
+
    },
    methods:{
+
+closeD(){
+    this.userRoleId='',
+    this.userInfo={}
+},
+       async getRoleList(){
+            const {data:res} = await this.$http.get('roles')
+            if(res.meta.status!=200){
+                return this.$message.error('获取失败');
+            }
+            this.roleList=res.data;
+            
+        },
+       grantUser(row){
+           this.userInfo=row;
+           this.userDialogVisible=true;
+
+       },
+       async saveRight(){
+           if(!this.userRoleId){
+               return this.$message.error('请先绑定角色')
+           }
+            const {data:res} = await this.$http.put(`users/${this.userInfo.id}/role`,{rid:this.userRoleId})
+            if(res.meta.status!=200){
+                return this.$message.error('授权失败');
+            }
+             this.$message.success('授权成功');
+           this.getUserList();
+           this.userDialogVisible = false
+       },
        open(id) {
         this.$confirm('此操作将永久删除该用户, 是否继续?', '提示', {
           confirmButtonText: '确定',
